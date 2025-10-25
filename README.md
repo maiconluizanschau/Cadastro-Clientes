@@ -137,7 +137,7 @@ O projeto consiste em um **painel administrativo** para gerenciamento de cliente
 ```
 
 ---
-]
+
 ##  Como executar o projeto localmente
 
 ### 1 Pré-requisitos
@@ -145,7 +145,7 @@ O projeto consiste em um **painel administrativo** para gerenciamento de cliente
 - Docker e Docker Compose  
 - Git
 
-### 2️⃣ Clonar o repositório
+###  Clonar o repositório
 ```bash
 git clone https://github.com/maiconluizanschau/teddy
 cd teddy
@@ -169,7 +169,7 @@ RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
 VITE_API_URL=http://localhost:3000
 ```
 
-### 4️⃣ Subir os containers
+### Subir os containers
 ```bash
 docker-compose up --build
 ```
