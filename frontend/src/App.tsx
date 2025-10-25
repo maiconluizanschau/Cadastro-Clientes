@@ -1,18 +1,17 @@
-import { Outlet, Link } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Clients from './pages/Clients';
+import SelectedClients from './pages/SelectedClients';
+import Login from './pages/Login'; // assume que já existe
 
 export default function App() {
+  const username = sessionStorage.getItem('username');
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <header className="flex items-center gap-4">
-        <h1 className="text-2xl font-semibold mr-auto">Teddy — Painel de Clientes</h1>
-        <nav className="flex gap-3 text-blue-600">
-          <Link to="/" className="hover:underline">Início</Link>
-          <Link to="/clients" className="hover:underline">Clientes</Link>
-        </nav>
-      </header>
-      <main className="mt-6">
-        <Outlet />
-      </main>
-    </div>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={username ? <Navigate to="/clients" replace /> : <Login />} />
+        <Route path="/clients" element={<Clients />} />
+        <Route path="/selected" element={<SelectedClients />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }

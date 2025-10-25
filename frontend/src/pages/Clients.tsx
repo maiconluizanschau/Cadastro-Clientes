@@ -1,25 +1,21 @@
-import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Topbar from '../components/Topbar';
 import Modal from '../components/Modal';
+import Input from '../components/Input';
 import { Plus, Pencil, Trash } from '../components/Icons';
+import { readSelected, toggleSelected, writeSelected } from '../utils/selection';
 
-type Client = { id: string; name: string; email: string; phone?: string };
+type Client = { id: string | number; name: string; email: string; phone?: string };
 type Enhanced = Client & { salary?: number; company?: number };
 
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const EXTRAS_KEY = 'client_extras';
-const SELECTED_KEY = 'selected_clients';
 
 const readExtras = (): Record<string, {salary?: number; company?: number}> => {
   try { return JSON.parse(localStorage.getItem(EXTRAS_KEY) || '{}'); } catch { return {}; }
 };
 const writeExtras = (obj: Record<string, {salary?: number; company?: number}>) =>
   localStorage.setItem(EXTRAS_KEY, JSON.stringify(obj));
-
-const readSelected = (): string[] => {
-  try { return (JSON.parse(localStorage.getItem(SELECTED_KEY) || '[]') as any[]).map(String); } catch { return []; }
-};
-const writeSelected = (arr: string[]) => localStorage.setItem(SELECTED_KEY, JSON.stringify(arr));
 
 export default function Clients() {
   const base = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -34,48 +30,34 @@ export default function Clients() {
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState<Enhanced | null>(null);
   const [openDelete, setOpenDelete] = useState<Enhanced | null>(null);
-  const [form, setForm] = useState({ name: '', salary: '', company: '' });
+  const [form, setForm] = useState({ name: '', email: '', salary: '', company: '' });
 
-  // refs de foco (um por modal/campo)
   const createNameRef = useRef<HTMLInputElement>(null);
-  const createSalaryRef = useRef<HTMLInputElement>(null);
-  const createCompanyRef = useRef<HTMLInputElement>(null);
   const editNameRef = useRef<HTMLInputElement>(null);
-  const editSalaryRef = useRef<HTMLInputElement>(null);
-  const editCompanyRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); }, []);
-
-  // Foca somente na abertura de cada modal (useLayoutEffect + setTimeout evita disputa)
-  useLayoutEffect(() => {
-    if (openCreate) {
-      const t = setTimeout(() => createNameRef.current?.focus(), 0);
-      return () => clearTimeout(t);
-    }
-  }, [openCreate]);
-  useLayoutEffect(() => {
-    if (openEdit) {
-      const t = setTimeout(() => editNameRef.current?.focus(), 0);
-      return () => clearTimeout(t);
-    }
-  }, [openEdit]);
-
-  // persistir selecionados e sincronizar entre abas
   useEffect(() => { writeSelected(selected); }, [selected]);
+
+  // sincroniza com outras abas e com navegação
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === SELECTED_KEY) setSelected(readSelected());
-    };
+    const onStorage = (e: StorageEvent) => { if (e.key === 'selected_clients') setSelected(readSelected()); };
+    const onFocus = () => setSelected(readSelected());
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
-  // clamp da paginação e persistência do perPage
   useEffect(() => {
     const max = Math.max(1, Math.ceil(clients.length / perPage));
     if (page > max) setPage(max);
     localStorage.setItem('per_page', String(perPage));
   }, [clients.length, perPage, page]);
+
+  useEffect(() => { if (openCreate) createNameRef.current?.focus(); }, [openCreate]);
+  useEffect(() => { if (openEdit) editNameRef.current?.focus(); }, [openEdit]);
 
   async function load() {
     const res = await fetch(`${base}/clients`);
@@ -83,16 +65,11 @@ export default function Clients() {
     const extras = readExtras();
     const merged: Enhanced[] = data.map(c => ({
       ...c,
-      salary: extras[c.id]?.salary ?? 3500,
-      company: extras[c.id]?.company ?? 120000,
+      salary: extras[String(c.id)]?.salary ?? 3500,
+      company: extras[String(c.id)]?.company ?? 120000,
     }));
     setClients(merged);
   }
-
-  const toggleSelect = (id: string) => {
-    const sid = String(id);
-    setSelected(sel => sel.includes(sid) ? sel.filter(s => s !== sid) : [...sel, sid]);
-  };
 
   const pages = Math.max(1, Math.ceil(clients.length / perPage));
   const pageItems = useMemo(() => {
@@ -100,45 +77,51 @@ export default function Clients() {
     return clients.slice(start, start + perPage);
   }, [clients, page, perPage]);
 
-  // Helpers de validação
   const moneyToNumber = (v: string) => {
     const norm = v.replace(/\./g, '').replace(',', '.').trim();
     const n = Number(norm);
     return isFinite(n) ? n : NaN;
   };
   const isValidName = form.name.trim().length >= 2;
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
   const isValidSalary = !isNaN(moneyToNumber(form.salary)) && moneyToNumber(form.salary) > 0;
   const isValidCompany = !isNaN(moneyToNumber(form.company)) && moneyToNumber(form.company) > 0;
-  const isCreateValid = isValidName && isValidSalary && isValidCompany;
+  const isCreateValid = isValidName && isValidEmail && isValidSalary && isValidCompany;
 
-  // Ações CRUD
+  // CREATE
   function openCreateModal() {
-    setForm({ name: '', salary: '', company: '' });
+    setForm({ name: '', email: '', salary: '', company: '' });
     setOpenCreate(true);
   }
-
   async function confirmCreate() {
     if (!isCreateValid) return;
-    const name = form.name.trim();
-    const email = `${name.toLowerCase().replace(/\s+/g,'')}@exemplo.com`;
+    const body = {
+      name: form.name.trim(),
+      email: form.email.trim()
+    };
     const res = await fetch(`${base}/clients`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email }),
+      body: JSON.stringify(body),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.message || 'Erro ao criar cliente.');
+      return;
+    }
     const created: Client = await res.json();
-    const extras = readExtras(); extras[created.id] = { salary: moneyToNumber(form.salary), company: moneyToNumber(form.company) };
+    const extras = readExtras(); extras[String(created.id)] = { salary: moneyToNumber(form.salary), company: moneyToNumber(form.company) };
     writeExtras(extras);
     setOpenCreate(false);
-    setForm({ name: '', salary: '', company: '' });
+    setForm({ name: '', email: '', salary: '', company: '' });
     await load();
   }
 
+  // EDIT
   function openEditModal(c: Enhanced) {
     setOpenEdit(c);
-    setForm({ name: c.name, salary: String(c.salary ?? ''), company: String(c.company ?? '') });
+    setForm({ name: c.name, email: c.email, salary: String(c.salary ?? ''), company: String(c.company ?? '') });
   }
-
   async function confirmEdit() {
     if (!openEdit) return;
     const name = form.name.trim() || openEdit.name;
@@ -147,32 +130,20 @@ export default function Clients() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     });
-    const extras = readExtras(); extras[openEdit.id] = { salary: moneyToNumber(form.salary), company: moneyToNumber(form.company) };
+    const extras = readExtras(); extras[String(openEdit.id)] = { salary: moneyToNumber(form.salary), company: moneyToNumber(form.company) };
     writeExtras(extras);
     setOpenEdit(null);
     await load();
   }
 
+  // DELETE
   async function confirmDelete() {
     if (!openDelete) return;
     await fetch(`${base}/clients/${openDelete.id}`, { method: 'DELETE' });
-    const extras = readExtras(); delete extras[openDelete.id]; writeExtras(extras);
+    const extras = readExtras(); delete extras[String(openDelete.id)]; writeExtras(extras);
     setOpenDelete(null);
     await load();
   }
-
-  // Componente Input comum
-  const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>((props, ref) => (
-    <input
-      ref={ref}
-      {...props}
-      className={
-        "h-[36px] w-full rounded-sm border border-[#D9D9D9] bg-white px-3 text-[13px] placeholder:text-[#9B9B9B] outline-none focus:ring-2 focus:ring-brand-500 " +
-        (props.className || "")
-      }
-    />
-  ));
-  Input.displayName = 'Input';
 
   return (
     <div className="min-h-screen bg-[#F3F3F3]">
@@ -201,7 +172,7 @@ export default function Clients() {
           {pageItems.map(c => {
             const isSel = selected.includes(String(c.id));
             return (
-              <article key={c.id} className="bg-white rounded-[8px] border border-[#EFEFEF] shadow-sm p-16 pt-6 pb-4 relative">
+              <article key={String(c.id)} className="bg-white rounded-[8px] border border-[#EFEFEF] shadow-sm p-16 pt-6 pb-4 relative">
                 <header className="text-center">
                   <h3 className="text-[16px] font-semibold mb-1">{c.name}</h3>
                   <p className="text-[12px] text-[#555]">Salário: {BRL.format(c.salary || 0)}</p>
@@ -211,11 +182,14 @@ export default function Clients() {
                   <button
                     title={isSel ? "Remover da seleção" : "Selecionar"}
                     className={"p-1 rounded " + (isSel ? 'bg-[#FFF3EC] text-[#F26D21] font-semibold' : 'hover:bg-[#F6F6F6]')}
-                    onClick={() => toggleSelect(String(c.id))}
+                    onClick={() => {
+                      const next = toggleSelected(c.id);
+                      setSelected(next);
+                    }}
                   >
                     {isSel ? '−' : <Plus />}
                   </button>
-                  <button title="Editar" className="p-1 rounded hover:bg-[#F6F6F6]" onClick={() => openEditModal(c)}><Pencil /></button>
+                  <button title="Editar" className="p-1 rounded hover:bg-[#F6F6F6]" onClick={() => setOpenEdit(c)}><Pencil /></button>
                   <button title="Excluir" className="p-1 rounded text-[#F26D21] hover:bg-[#FFF3EC]" onClick={() => setOpenDelete(c)}><Trash /></button>
                 </footer>
               </article>
@@ -251,7 +225,7 @@ export default function Clients() {
         </div>
       </main>
 
-      {/* Modal Criar - campos obrigatórios e foco estável */}
+      {/* Modal Criar */}
       <Modal
         open={openCreate}
         title="Criar cliente:"
@@ -261,41 +235,14 @@ export default function Clients() {
         disabled={!isCreateValid}
       >
         <div className="grid gap-2">
-          <Input
-            ref={createNameRef}
-            placeholder="Digite o nome:"
-            value={form.name}
-            onChange={e => setForm({ ...form, name: e.currentTarget.value })}
-            required
-            aria-invalid={!isValidName}
-          />
-          <Input
-            ref={createSalaryRef}
-            placeholder="Digite o salário:"
-            inputMode="decimal"
-            value={form.salary}
-            onChange={e => setForm({ ...form, salary: e.currentTarget.value })}
-            required
-            aria-invalid={!isValidSalary}
-          />
-          <Input
-            ref={createCompanyRef}
-            placeholder="Digite o valor da empresa:"
-            inputMode="decimal"
-            value={form.company}
-            onChange={e => setForm({ ...form, company: e.currentTarget.value })}
-            required
-            aria-invalid={!isValidCompany}
-          />
-          {!isCreateValid && (
-            <p className="text-xs text-red-600 mt-1">
-              Preencha todos os campos: nome (mín. 2 letras), salário e empresa.
-            </p>
-          )}
+          <Input ref={createNameRef} placeholder="Digite o nome:" value={form.name} onChange={e => setForm({ ...form, name: e.currentTarget.value })} required aria-invalid={!isValidName} />
+          <Input placeholder="Digite o e-mail:" value={form.email} onChange={e => setForm({ ...form, email: e.currentTarget.value })} required aria-invalid={!isValidEmail} />
+          <Input placeholder="Digite o salário:" inputMode="decimal" value={form.salary} onChange={e => setForm({ ...form, salary: e.currentTarget.value })} required aria-invalid={!isValidSalary} />
+          <Input placeholder="Digite o valor da empresa:" inputMode="decimal" value={form.company} onChange={e => setForm({ ...form, company: e.currentTarget.value })} required aria-invalid={!isValidCompany} />
         </div>
       </Modal>
 
-      {/* Modal Editar - foco estável e validação básica do nome */}
+      {/* Modal Editar */}
       <Modal
         open={!!openEdit}
         title="Editar cliente:"
@@ -305,42 +252,15 @@ export default function Clients() {
         disabled={!form.name.trim()}
       >
         <div className="grid gap-2">
-          <Input
-            ref={editNameRef}
-            placeholder="Nome"
-            value={form.name}
-            onChange={e => setForm({ ...form, name: e.currentTarget.value })}
-            required
-            aria-invalid={!form.name.trim()}
-          />
-          <Input
-            ref={editSalaryRef}
-            placeholder="R$ 3.500,00"
-            inputMode="decimal"
-            value={form.salary}
-            onChange={e => setForm({ ...form, salary: e.currentTarget.value })}
-          />
-          <Input
-            ref={editCompanyRef}
-            placeholder="R$ 120.000,00"
-            inputMode="decimal"
-            value={form.company}
-            onChange={e => setForm({ ...form, company: e.currentTarget.value })}
-          />
+          <Input ref={editNameRef} placeholder="Nome" value={form.name} onChange={e => setForm({ ...form, name: e.currentTarget.value })} required aria-invalid={!form.name.trim()} />
+          <Input placeholder="R$ 3.500,00" inputMode="decimal" value={form.salary} onChange={e => setForm({ ...form, salary: e.currentTarget.value })} />
+          <Input placeholder="R$ 120.000,00" inputMode="decimal" value={form.company} onChange={e => setForm({ ...form, company: e.currentTarget.value })} />
         </div>
       </Modal>
 
       {/* Modal Excluir */}
-      <Modal
-        open={!!openDelete}
-        title="Excluir cliente:"
-        onClose={() => setOpenDelete(null)}
-        submitLabel="Excluir cliente"
-        onSubmit={confirmDelete}
-      >
-        <p className="text-[13px] text-[#141414]">
-          Você está prestes a excluir o cliente: <span className="font-semibold">{openDelete?.name}</span>
-        </p>
+      <Modal open={!!openDelete} title="Excluir cliente:" onClose={() => setOpenDelete(null)} submitLabel="Excluir cliente" onSubmit={confirmDelete}>
+        <p className="text-[13px] text-[#141414]">Você está prestes a excluir o cliente: <span className="font-semibold">{openDelete?.name}</span></p>
       </Modal>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Topbar from '../components/Topbar';
 import { Trash } from '../components/Icons';
+import { readSelected, writeSelected } from '../utils/selection';
 
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -9,8 +10,7 @@ export default function SelectedClients() {
   const [clients, setClients] = useState<any[]>([]);
 
   async function load() {
-    const selectedRaw = localStorage.getItem('selected_clients');
-    const selected: string[] = selectedRaw ? JSON.parse(selectedRaw) : [];
+    const selected = readSelected();
     if (selected.length === 0) return setClients([]);
 
     try {
@@ -21,8 +21,8 @@ export default function SelectedClients() {
         .filter((c: any) => selected.includes(String(c.id)))
         .map((c: any) => ({
           ...c,
-          salary: extras[c.id]?.salary ?? 0,
-          company: extras[c.id]?.company ?? 0,
+          salary: extras[String(c.id)]?.salary ?? 0,
+          company: extras[String(c.id)]?.company ?? 0,
         }));
       setClients(filtered);
     } catch (err) {
@@ -33,23 +33,24 @@ export default function SelectedClients() {
 
   useEffect(() => {
     load();
-    window.addEventListener('focus', load);
+    const onFocus = () => load();
     const onStorage = (e: StorageEvent) => { if (e.key === 'selected_clients') load(); };
+    window.addEventListener('focus', onFocus);
     window.addEventListener('storage', onStorage);
     return () => {
-      window.removeEventListener('focus', load);
+      window.removeEventListener('focus', onFocus);
       window.removeEventListener('storage', onStorage);
     };
   }, []);
 
-  const removeClient = (id: string) => {
-    const selected: string[] = (JSON.parse(localStorage.getItem('selected_clients') || '[]') as any[]).map(String).filter((c: string) => c !== String(id));
-    localStorage.setItem('selected_clients', JSON.stringify(selected));
+  const removeClient = (id: string | number) => {
+    const ids = readSelected().filter(x => x !== String(id));
+    writeSelected(ids);
     setClients(clients.filter(c => String(c.id) !== String(id)));
   };
 
   const clearAll = () => {
-    localStorage.removeItem('selected_clients');
+    writeSelected([]);
     setClients([]);
   };
 
@@ -60,7 +61,7 @@ export default function SelectedClients() {
         <h2 className="text-[16px] font-semibold mb-4">Clientes selecionados:</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {clients.map(c => (
-            <article key={c.id} className="bg-white rounded-[8px] border border-[#EFEFEF] shadow-sm p-16 pt-6 pb-4 relative">
+            <article key={String(c.id)} className="bg-white rounded-[8px] border border-[#EFEFEF] shadow-sm p-16 pt-6 pb-4 relative">
               <header className="text-center">
                 <h3 className="text-[16px] font-semibold mb-1">{c.name}</h3>
                 <p className="text-[12px] text-[#555]">Salário: {BRL.format(c.salary || 0)}</p>
