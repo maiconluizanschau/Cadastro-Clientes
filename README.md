@@ -85,13 +85,11 @@ O projeto consiste em um **painel administrativo** para gerenciamento de cliente
 | Etapa | Descrição | Tempo estimado |
 |-------|------------|----------------|
 | Planejamento e setup (repositório, Docker, CI/CD) | Configuração inicial e ambiente | 1–2 dias |
-| Backend (NestJS + TypeORM + Swagger + testes) | API completa CRUD de clientes | 3–4 dias |
-| Frontend (React + Vite + CRUD + navegação) | Telas e integração com API | 3–4 dias |
-| Integração, QA, gravação de vídeo | Validação final e refinamentos | 1–2 dias |
+| Backend (NestJS + TypeORM + Swagger + testes) | API completa CRUD de clientes | 2–3 dias |
+| Frontend (React + Vite + CRUD + navegação) | Telas e integração com API | 2–3 dias |
+| Integração, QA | Validação final e refinamentos | 1–2 dias |
 
-**➡️ Total: 8 a 12 dias úteis (2 a 3 semanas de calendário)**  
-
-Com diferenciais (E2E, mensageria, observabilidade, deploy AWS): +3–5 dias úteis.
+**➡️ Total: 5 a 10 dias úteis (2 a 3 semanas de calendário)**  
 
 ---
 
@@ -115,7 +113,7 @@ Com diferenciais (E2E, mensageria, observabilidade, deploy AWS): +3–5 dias út
 | **Backend Dev** | API, banco, testes, mensageria | **Pleno** |
 | **Frontend Dev** | React, UX, integração, testes E2E | **Pleno** |
 
-> Um único **sênior full-stack** é capaz de entregar o MVP completo em ~3–4 semanas.
+> Caso extremo um único **sênior full-stack** é capaz de entregar o MVP completo em ~3–4 semanas, caso seja necessário.
 
 --- 
 
