@@ -29,7 +29,7 @@ O projeto consiste em um **painel administrativo** para gerenciamento de cliente
 
 ### **Infraestrutura**
 - Docker e Docker Compose  
-- Arquitetura voltada para **AWS**:
+- Arquitetura:
   - **ECS ou EKS** para deploy das aplicações
   - **RDS (PostgreSQL)** para banco de dados
   - **S3 + CloudFront** para servir o frontend
