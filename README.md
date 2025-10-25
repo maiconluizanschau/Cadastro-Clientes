@@ -117,7 +117,7 @@ O projeto consiste em um **painel administrativo** para gerenciamento de cliente
 
 --- 
 
-## ☁️ Arquitetura AWS (visão simplificada)
+## Arquitetura
 
 ```
                 ┌─────────────────────────────┐
