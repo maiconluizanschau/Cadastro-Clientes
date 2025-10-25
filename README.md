@@ -1,6 +1,6 @@
 ## Descrição do Sistema
 
-O projeto consiste em um **painel administrativo** para gerenciamento de clientes, composto por duas aplicações — **Frontend (React + Vite)** e **Backend (NestJS + TypeORM + PostgreSQL)** — com containerização via Docker e orquestração pelo Docker Compose.
+O projeto consiste em um **painel administrativo** para gerenciamento de clientes, composto por duas aplicações **Frontend (React + Vite)** e **Backend (NestJS + TypeORM + PostgreSQL)** com containerização via Docker e orquestração pelo Docker Compose.
 
 ### Fluxo principal do sistema
 1. **Tela inicial:** o usuário insere seu nome.  
