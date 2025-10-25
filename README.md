@@ -137,3 +137,47 @@ O projeto consiste em um **painel administrativo** para gerenciamento de cliente
 ```
 
 ---
+]
+##  Como executar o projeto localmente
+
+### 1 Pré-requisitos
+- Node.js 20+  
+- Docker e Docker Compose  
+- Git
+
+### 2️⃣ Clonar o repositório
+```bash
+git clone https://github.com/maiconluizanschau/teddy
+cd teddy
+```
+
+###  Configurar variáveis de ambiente
+
+#### Backend — `.env`
+```env
+DATABASE_HOST=postgres
+DATABASE_PORT=5432
+DATABASE_USER=postgres
+DATABASE_PASS=postgres
+DATABASE_NAME=clientes
+PORT=3000
+RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+```
+
+#### Frontend — `.env`
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+### 4️⃣ Subir os containers
+```bash
+docker-compose up --build
+```
+
+Após a inicialização:
+- Frontend → **http://localhost:5173**  
+- Backend API → **http://localhost:3000**  
+- Swagger → **http://localhost:3000/api/docs**  
+- RabbitMQ UI → **http://localhost:15672** (usuário: guest / senha: guest)
+
+---
